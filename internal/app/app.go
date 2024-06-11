@@ -3,7 +3,7 @@ package app
 import (
 	"booking-service/internal/config"
 	"booking-service/internal/logger"
-	"booking-service/internal/repository"
+	"booking-service/internal/repository/inmem"
 	"booking-service/internal/service"
 	"booking-service/internal/transport/rest/handler"
 	"context"
@@ -26,7 +26,7 @@ func Run(configDir string) {
 	//clean architecture: handler -> service -> repository
 
 	//init repository
-	bookingRepository := repository.NewBookingInMemoryRepo(defaultLogger)
+	bookingRepository := inmem.NewBookingInMemoryRepo(defaultLogger)
 
 	//init service
 	bookingService := service.NewBookingService(bookingRepository, defaultLogger)

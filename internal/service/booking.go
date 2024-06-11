@@ -3,21 +3,22 @@ package service
 import (
 	"booking-service/internal/domain"
 	"booking-service/internal/logger"
+	"context"
 )
 
-type Booking interface {
-	CreateBooking(order *domain.Order) (domain.Order, error)
+type BookingRepo interface {
+	CreateBooking(ctx context.Context, order *domain.Order) (domain.Order, error)
 }
 
 type BookingServiceImpl struct {
-	repository Booking
+	repository BookingRepo
 	*logger.Logger
 }
 
-func NewBookingService(repository Booking, log *logger.Logger) BookingServiceImpl {
+func NewBookingService(repository BookingRepo, log *logger.Logger) BookingServiceImpl {
 	return BookingServiceImpl{repository: repository, Logger: log}
 }
 
-func (bs *BookingServiceImpl) Book(order *domain.Order) (domain.Order, error) {
-	return bs.repository.CreateBooking(order)
+func (bs BookingServiceImpl) Book(ctx context.Context, order *domain.Order) (domain.Order, error) {
+	return bs.repository.CreateBooking(ctx, order)
 }

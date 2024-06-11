@@ -5,13 +5,14 @@ import (
 	"booking-service/internal/logger"
 	"booking-service/internal/transport/rest"
 	"booking-service/internal/transport/rest/dto"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
 type BookingService interface {
-	Book(order *domain.Order) (domain.Order, error)
+	Book(context context.Context, order *domain.Order) (domain.Order, error)
 }
 
 // BookingHandler is a booking handler.
@@ -21,8 +22,8 @@ type BookingHandler struct {
 }
 
 // NewBookingHandler creates a new booking handler.
-func NewBookingHandler(service BookingService, log *logger.Logger) *BookingHandler {
-	return &BookingHandler{service: service, logger: log}
+func NewBookingHandler(service BookingService, log *logger.Logger) BookingHandler {
+	return BookingHandler{service: service, logger: log}
 }
 
 // Post handles POST /orders requests
@@ -38,16 +39,19 @@ func (h *BookingHandler) Post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order := rest.OrderHttpToDomain(&request)
-	newOrder, err := h.service.Book(order)
+	order, err := rest.OrderHttpToDomain(&request)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid request: %s", err), http.StatusBadRequest)
+		return
+	}
+
+	newOrder, err := h.service.Book(r.Context(), order)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("booking error: %s", err), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(rest.OrderModelToHttp(&newOrder))
-
-	h.logger.LogInfo("Order successfully created: %v", newOrder)
+	resp := rest.OrderModelToHttp(&newOrder)
+	rest.RespondCreated(resp, w, r)
+	h.logger.LogInfo("order successfully created: %v", resp)
 }

@@ -1,23 +1,24 @@
-package repository
+package inmem
 
 import (
 	"booking-service/internal/domain"
 	"booking-service/internal/e"
 	"booking-service/internal/logger"
 	"booking-service/internal/utils"
+	"context"
 	"math/rand"
 	"sync"
 	"time"
 )
 
-type BookingRepo struct {
+type BookingInMemoryRepo struct {
 	orders           []domain.Order
 	roomAvailability []domain.RoomAvailability
 	mu               sync.RWMutex
 	*logger.Logger
 }
 
-func NewBookingInMemoryRepo(logger *logger.Logger) *BookingRepo {
+func NewBookingInMemoryRepo(logger *logger.Logger) *BookingInMemoryRepo {
 	var availability = []domain.RoomAvailability{
 		{"reddison", "lux", utils.Date(2024, 1, 1), 1},
 		{"reddison", "lux", utils.Date(2024, 1, 2), 1},
@@ -26,25 +27,26 @@ func NewBookingInMemoryRepo(logger *logger.Logger) *BookingRepo {
 		{"reddison", "lux", utils.Date(2024, 1, 5), 0},
 	}
 
-	return &BookingRepo{
+	return &BookingInMemoryRepo{
+		orders:           make([]domain.Order, 0, 2),
 		roomAvailability: availability,
 		Logger:           logger,
 	}
 }
 
-func (repo *BookingRepo) CreateBooking(order *domain.Order) (domain.Order, error) {
-	defer repo.mu.Unlock()
-	repo.mu.Lock()
-
-	daysToBook := utils.DaysBetween(order.From, order.To)
+func (repo *BookingInMemoryRepo) CreateBooking(_ context.Context, order *domain.Order) (domain.Order, error) {
+	daysToBook := utils.DaysBetween(order.From(), order.To())
 	unavailableDays := make(map[time.Time]struct{})
 	for _, day := range daysToBook {
 		unavailableDays[day] = struct{}{}
 	}
 
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
 	for _, dayToBook := range daysToBook {
 		for i, availability := range repo.roomAvailability {
-			if availability.HotelID != order.HotelID || availability.RoomID != order.RoomID ||
+			if availability.HotelID != order.HotelID() || availability.RoomID != order.RoomID() ||
 				!availability.Date.Equal(dayToBook) || availability.Quota < 1 {
 				continue
 			}
@@ -60,19 +62,23 @@ func (repo *BookingRepo) CreateBooking(order *domain.Order) (domain.Order, error
 		return domain.Order{}, e.BookingError
 	}
 
-	return repo.createOrder(order), nil
+	return repo.createOrder(order)
 }
 
-func (repo *BookingRepo) createOrder(order *domain.Order) domain.Order {
-	newOrder := domain.Order{
-		ID:        rand.Int(),
-		HotelID:   order.HotelID,
-		RoomID:    order.RoomID,
-		UserEmail: order.UserEmail,
-		From:      order.From,
-		To:        order.To,
+func (repo *BookingInMemoryRepo) createOrder(order *domain.Order) (domain.Order, error) {
+	newOrder, err := domain.NewOrder(
+		order.HotelID(),
+		order.RoomID(),
+		order.UserEmail(),
+		order.From(),
+		order.To(),
+	)
+
+	err = newOrder.SetID(rand.Int())
+	if err != nil {
+		return domain.Order{}, err
 	}
 
-	repo.orders = append(repo.orders, newOrder)
-	return newOrder
+	repo.orders = append(repo.orders, *newOrder)
+	return *newOrder, nil
 }

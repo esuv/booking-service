@@ -6,7 +6,7 @@ Basic application for booking hotel rooms
 
 ## API Reference
 
-#### Create order
+#### Create an order
 
 ```http
   POST /orders
