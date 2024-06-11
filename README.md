@@ -8,13 +8,17 @@ Basic application for booking hotel rooms
 
 #### Create an order
 
-```http
-  POST /orders
+```sh
+curl --location --request POST 'localhost:8080/orders' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "hotel_id": "reddison",
+    "room_id": "lux",
+    "email": "guest@mail.ru",
+    "from": "2024-01-02T00:00:00Z",
+    "to": "2024-01-04T00:00:00Z"
+}'
 ```
-
-| Parameter | Type     | Description                |
-|:----------|:---------|:---------------------------|
-| `api_key` | `string` | **Required**. Your API key |
 
 ## Deployment
 

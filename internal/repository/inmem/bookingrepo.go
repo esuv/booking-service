@@ -74,6 +74,7 @@ func (repo *BookingInMemoryRepo) createOrder(order *domain.Order) (domain.Order,
 		order.To(),
 	)
 
+	//generating unique id or seq id for new entity
 	err = newOrder.SetID(rand.Int())
 	if err != nil {
 		return domain.Order{}, err
